@@ -56,27 +56,12 @@ func processTruck(truck Truck) error {
 		return fmt.Errorf("error unloading cargo for truck: %w", err)
 	}
 
+	fmt.Printf("finished processing truck %+v\n", truck)
 	return nil
 }
 
 func processFleet(fleet []Truck) error {
-	var wg sync.WaitGroup
-
-	for _, t := range fleet {
-
-		wg.Add(1)
-
-		go func(t Truck) {
-			if err := processTruck(t); err != nil {
-				log.Println(err)
-			}
-			wg.Done()
-		}(t)
-
-	}
-	wg.Wait()
-
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 func main() {
@@ -87,8 +72,10 @@ func main() {
 		&ElectricTruck{id: "ET2", cargo: 0, batteryLevel: 100},
 	}
 
+	// Process all trucks concurrently
 	if err := processFleet(Fleet); err != nil {
-		log.Fatalf("Error processing fleet %v", err)
+		fmt.Printf("Error processing fleed: %v\n", err)
+		return
 	}
 
 	fmt.Println("All trucks processed succesfully")
