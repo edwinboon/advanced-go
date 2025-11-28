@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 )
 
 type Truck interface {
@@ -58,5 +57,17 @@ func processTruck(truck Truck) error {
 	return nil
 }
 
+func fillTruckWithCargo(t *NormalTruck) {
+	t.cargo = 100
+}
+
 func main() {
+	// truckID := "Truck-1"
+	// fmt.Println("id:", truckID)
+	// fmt.Println("address in memory:", &truckID) // we can use & to get the address of a variable
+
+	t := NormalTruck{id: "Truck-1", cargo: 0}
+	fillTruckWithCargo(&t)
+
+	fmt.Printf("Truck after filling: %+v\n", t)
 }
