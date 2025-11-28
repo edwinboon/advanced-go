@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sync"
+	"time"
 )
 
 type Truck interface {
@@ -48,6 +48,9 @@ func (e *ElectricTruck) UnloadCargo() error {
 func processTruck(truck Truck) error {
 	fmt.Printf("processing truck %+v\n", truck)
 
+	// simulate some processing time
+	time.Sleep(time.Second * 1)
+
 	if err := truck.LoadCargo(); err != nil {
 		return fmt.Errorf("error loading cargo for truck: %w", err)
 	}
@@ -60,8 +63,27 @@ func processTruck(truck Truck) error {
 	return nil
 }
 
-func processFleet(fleet []Truck) error {
-	return fmt.Errorf("not implemented")
+/**
+ * only add the keyword 'go' will not work as expected because the main function may exit before goroutines complete.
+ * there fore, we need to add a waitGroup mechanism to ensure all goroutines finish before main exits.
+ */
+func processFleet(trucks []Truck) error {
+	var wg sync.WaitGroup
+
+	for _, t := range trucks {
+		wg.Add(1) // wait for 1 goroutine each iteration
+
+		go func(t Truck) {
+			if err := processTruck(t); err != nil {
+				fmt.Printf("Error processing truck: %s\n", err)
+			}
+			wg.Done()
+		}(t) // launch goroutine to process each truck and we do this because we want to call wg.Done() after processing
+	}
+
+	wg.Wait() // wait for all goroutines to finish
+
+	return nil
 }
 
 func main() {
