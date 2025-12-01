@@ -1,10 +1,11 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
+	"log"
 	"sync"
-	"time"
+	// "time"
 )
 
 type ContextKey string
@@ -50,67 +51,62 @@ func (e *ElectricTruck) UnloadCargo() error {
 }
 
 // processTruck handles the loading and unloading of a truck.
-func processTruck(ctx context.Context, truck Truck) error {
-	fmt.Printf("processing truck %+v\n", truck)
-
-	// access the userId from context
-	// userID := ctx.Value(UserIDKey)
-	// fmt.Printf("User ID from context: %v\n", userID)
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second*2)
-	defer cancel()
-
-	// simulate a long running process
-	delay := time.Second * 5 // 1
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(delay):
-		break
-	}
-
-	// simulate some processing time
-	time.Sleep(time.Second * 1)
-
-	if err := truck.LoadCargo(); err != nil {
-		return fmt.Errorf("error loading cargo for truck: %w", err)
-	}
-
-	if err := truck.UnloadCargo(); err != nil {
-		return fmt.Errorf("error unloading cargo for truck: %w", err)
-	}
-
-	fmt.Printf("finished processing truck %+v\n", truck)
-	return nil
+func processTruck(truck Truck) error {
+	// fmt.Printf("processing truck %+v\n", truck)
+	//
+	// // simulate some processing time
+	// time.Sleep(time.Second * 1)
+	//
+	// if err := truck.LoadCargo(); err != nil {
+	// 	return fmt.Errorf("error loading cargo for truck: %w", err)
+	// }
+	//
+	// if err := truck.UnloadCargo(); err != nil {
+	// 	return fmt.Errorf("error unloading cargo for truck: %w", err)
+	// }
+	//
+	// fmt.Printf("finished processing truck %+v\n", truck)
+	return errors.New("truck not found")
 }
 
 /**
  * only add the keyword 'go' will not work as expected because the main function may exit before goroutines complete.
  * there fore, we need to add a waitGroup mechanism to ensure all goroutines finish before main exits.
  */
-func processFleet(ctx context.Context, trucks []Truck) error {
+func processFleet(trucks []Truck) error {
 	var wg sync.WaitGroup
+
+	errorsChan := make(chan error, len(trucks)) // buffered channel to hold errors
 
 	for _, t := range trucks {
 		wg.Add(1) // wait for 1 goroutine each iteration
 
 		go func(t Truck) {
-			if err := processTruck(ctx, t); err != nil {
-				fmt.Printf("Error processing truck: %s\n", err)
+			if err := processTruck(t); err != nil {
+				errorsChan <- err // sending error to channel
 			}
 			wg.Done()
 		}(t) // launch goroutine to process each truck and we do this because we want to call wg.Done() after processing
 	}
 
-	wg.Wait() // wait for all goroutines to finish
+	wg.Wait()         // wait for all goroutines to finish
+	close(errorsChan) // close the errors channel after all goroutines are done
+
+	var errs []error
+
+	for err := range errorsChan {
+		log.Printf("Error processing truck: %s\n", err)
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("fleet processing had %d errors", len(errs))
+	}
 
 	return nil
 }
 
 func main() {
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, UserIDKey, 42)
-
 	fleet := []Truck{
 		&NormalTruck{id: "NT1", cargo: 0},
 		&ElectricTruck{id: "ET1", cargo: 0, batteryLevel: 100},
@@ -119,11 +115,10 @@ func main() {
 	}
 
 	// Process all trucks concurrently
-	if err := processFleet(ctx, fleet); err != nil {
+	if err := processFleet(fleet); err != nil {
 		fmt.Printf("Error processing fleed: %v\n", err)
 		return
 	}
 
 	fmt.Println("All trucks processed succesfully")
 }
-
